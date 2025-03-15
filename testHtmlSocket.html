@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Chat Messages</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        .chat-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .message-list {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .sent {
+            background: #e3f2fd;
+            margin-left: 20%;
+        }
+        .received {
+            background: #f5f5f5;
+            margin-right: 20%;
+        }
+        .message-input {
+            width: 80%;
+            padding: 10px;
+        }
+        .send-button {
+            width: 18%;
+            padding: 10px;
+            margin-left: 2%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container">
+        <div class="message-list" id="messageList"></div>
+        <div>
+            <input type="text" id="recipientId" placeholder="Recipient ID" class="message-input">
+        </div>
+        <div style="margin-top: 10px;">
+            <input type="text" id="messageInput" placeholder="Type your message..." class="message-input">
+            <button onclick="sendMessage()" class="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io('http://localhost:5050', {
+            auth: {
+                token: localStorage.getItem('token') 
+            }
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to chat server');
+        });
+
+        socket.on('message', (data) => {
+            console.log('Received message:', data);
+            displayMessage(data.content, 'received', data.senderId);
+        });
+
+        socket.on('error', (error) => {
+            console.error('Socket error:', error);
+            alert(`Error: ${error.message}`);
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.log('Disconnected:', reason);
+        });
+
+        function displayMessage(content, type, userId) {
+            const messageList = document.getElementById('messageList');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = `${userId ? userId + ': ' : ''}${content}`;
+            messageList.appendChild(messageDiv);
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+        function sendMessage() {
+            const recipientId = document.getElementById('recipientId').value;
+            const content = document.getElementById('messageInput').value;
+            
+            if (!recipientId || !content) {
+                alert('Please enter both recipient ID and message');
+                return;
+            }
+
+            socket.emit('message', {
+                recipientId: recipientId,
+                content: content
+            });
+
+            displayMessage(content, 'sent');
+            document.getElementById('messageInput').value = '';
+        }
+
+        // Handle enter key in message input
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+
+</html>
